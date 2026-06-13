@@ -1,0 +1,30 @@
+name: Publish to GitHub Packages
+
+# Publishes @kryard/relay-sdk to GitHub Packages (npm.pkg.github.com), scoped to
+# the repo owner. Uses the built-in GITHUB_TOKEN (no PAT needed). Fires on a
+# version tag, or run manually (workflow_dispatch) against a branch/tag.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://npm.pkg.github.com
+          scope: "@kryard"
+      - run: npm install
+      # `npm publish` runs prepack (build) + prepublishOnly (typecheck+test), then
+      # publishes to GitHub Packages. The package inherits the repo's visibility.
+      - run: npm publish --registry=https://npm.pkg.github.com
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
