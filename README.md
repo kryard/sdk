@@ -9,9 +9,21 @@ Pairs with the on-chain `KryardDelegate` and Kryard's relay routes.
 
 ## Install
 
+Published to both npm and GitHub Packages (same version):
+
 ```bash
+# npm (public)
 npm i @kryard/relay-sdk viem
 ```
+
+From **GitHub Packages**, add to your `.npmrc` first:
+
+```
+@kryard:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}   # a PAT with read:packages
+```
+
+then `npm i @kryard/relay-sdk viem`.
 
 ## Quick start
 
