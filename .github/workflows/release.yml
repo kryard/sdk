@@ -1,0 +1,31 @@
+name: Release
+
+# Publish to npm on a version tag (e.g. v0.1.0). The tag must match package.json
+# version. Requires repo secret NPM_TOKEN (an npm automation token with publish
+# rights to the @kryard scope).
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      # npm (not pnpm) in CI — runs esbuild's postinstall by default, avoiding
+      # pnpm's build-script approval policy.
+      - run: npm install
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm run test
+      # No --provenance: the repo is private (provenance requires a public repo).
+      - run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

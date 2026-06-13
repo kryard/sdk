@@ -1,0 +1,68 @@
+{
+  "name": "@kryard/relay-sdk",
+  "version": "0.1.0",
+  "description": "Thin client for Kryard's managed EIP-7702 relay: signAuthorization → sponsored execute, with optional ERC-20 gas payment.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "license": "MIT",
+  "author": "foreseerco",
+  "keywords": [
+    "kryard",
+    "eip-7702",
+    "7702",
+    "relayer",
+    "paymaster",
+    "gasless",
+    "sponsored-transaction",
+    "account-abstraction",
+    "viem",
+    "turnkey"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kryard/relay-sdk.git"
+  },
+  "homepage": "https://github.com/Kryard/relay-sdk#readme",
+  "bugs": "https://github.com/Kryard/relay-sdk/issues",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm run test"
+  },
+  "dependencies": {
+    "@noble/curves": "^1.9.7",
+    "@noble/hashes": "^1.8.0"
+  },
+  "peerDependencies": {
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0",
+    "viem": "^2.21.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
