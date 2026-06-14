@@ -1,11 +1,17 @@
 # @kryard/relay-sdk
 
-A thin client for **Kryard's managed EIP-7702 relay**. A user signs a 7702
-authorization + a batch digest; Kryard signs, fronts gas, and broadcasts the type-4
-transaction — your user gets smart-wallet-grade UX (batched calls, gasless) with no
-4337 bundler or custom delegate. Optionally the user pays gas in any **ERC-20**.
+A client for **Kryard's Turnkey-compatible wallet infrastructure**:
 
-Pairs with the on-chain `KryardDelegate` and Kryard's relay routes.
+- **Wallets & signing** — create secp256k1 keys, sign raw payloads and EVM
+  transactions through Kryard's Turnkey-shaped activity API (X-Stamp authed).
+- **Key export** — pull a key out as an HPKE-sealed bundle (RFC 9180) and recover
+  it locally; the plaintext never leaves the signer except encrypted to you.
+- **Managed EIP-7702 relay** — a user signs a 7702 authorization + batch digest;
+  Kryard signs, fronts gas, and broadcasts the type-4 transaction (gasless, batched,
+  no 4337 bundler). Optionally the user pays gas in any **ERC-20**.
+
+All three share the same `X-Stamp` API-key stamper. Pairs with the on-chain
+`KryardDelegate` and Kryard's public API.
 
 ## Install
 
@@ -115,8 +121,86 @@ const tx = await sponsorCall({
 `sponsorExecute` (above) is just `sponsorCall` with the KryardDelegate calldata built
 for you.
 
+## Wallets & signing
+
+`KryardClient` wraps Kryard's Turnkey-compatible activity API. Every method stamps
+the exact request body with your API key and parses the single-nested activity
+envelope, throwing an `ActivityError` (carrying the server's `code` + `message`) when
+an activity does not complete.
+
+```ts
+import { KryardClient, createApiKeyStamper, ActivityError } from "@kryard/relay-sdk";
+
+const kryard = new KryardClient({
+  baseUrl: "https://api.kryard.com",
+  organizationId: process.env.KRYARD_ORG!,
+  stamper: createApiKeyStamper({
+    apiPublicKey: process.env.KRYARD_API_PUBLIC_KEY!,
+    apiPrivateKey: process.env.KRYARD_API_PRIVATE_KEY!,
+  }),
+});
+
+// Create a secp256k1 EVM key (defaults: CURVE_SECP256K1, ADDRESS_FORMAT_ETHEREUM).
+const { privateKeyId, addresses } = await kryard.createPrivateKey({ name: "hot-wallet-1" });
+// → addresses: [{ addressFormat: "ADDRESS_FORMAT_ETHEREUM", address: "0x…" }]
+
+// Sign an EVM transaction (signedTransaction is hex WITHOUT 0x — ready to broadcast).
+const { signedTransaction } = await kryard.signTransaction({
+  signWith: privateKeyId,            // a key id OR an address the org owns
+  unsignedTransaction: "0x02ef…",    // serialized EIP-1559 tx, e.g. from viem
+});
+
+// Sign a raw payload (r/s/v components).
+const { r, s, v } = await kryard.signRawPayload({
+  signWith: privateKeyId,
+  payload: "0xdeadbeef",
+  hashFunction: "HASH_FUNCTION_KECCAK256",
+});
+
+try {
+  await kryard.signTransaction({ signWith: "0xUnknown", unsignedTransaction: "0x02ef…" });
+} catch (e) {
+  if (e instanceof ActivityError) console.error(e.code, e.message); // typed failure
+}
+```
+
+You may also import any Turnkey-protocol stamper (e.g. `@turnkey/api-key-stamper`) —
+Kryard speaks the Turnkey protocol — or inject your own `Stamper`.
+
+## Key export
+
+Export pulls a key out as an **HPKE-sealed bundle** (RFC 9180, suite
+`DHKEM(P-256, HKDF-SHA256) / HKDF-SHA256 / AES-256-GCM`, info `"kryard-export-v1"`,
+aad = the key id). The signer decrypts the key inside its boundary and re-seals it to
+a recipient public key you supply — plaintext never crosses the wire.
+
+```ts
+// Convenience: generate an ephemeral recipient keypair, request the sealed bundle,
+// HPKE-open it locally, and return the recovered key. The recipient key is zeroized.
+const { privateKey } = await kryard.exportPrivateKey({ signWith: privateKeyId });
+// privateKey: hex (no 0x) — handle like any raw key (do not log / persist / transmit).
+```
+
+Bring-your-own-recipient (e.g. an HSM or air-gapped key holds the recipient secret):
+
+```ts
+import { decryptExportBundle, generateRecipientKeyPair } from "@kryard/relay-sdk";
+
+const recipient = await generateRecipientKeyPair();           // P-256, SEC1-uncompressed hex
+const { privateKeyId: resolvedId, exportBundle } = await kryard.exportPrivateKeyBundle({
+  signWith: privateKeyId,
+  targetPublicKey: recipient.publicKeyHex,
+});
+// Open with the recipient private key. The aad MUST be the resolved key id.
+const keyBytes = await decryptExportBundle(exportBundle, recipient.privateKey, resolvedId);
+```
+
+The bundle is a clean RFC-9180 HPKE format and interops with the Go (CIRCL) signer;
+it is **not** byte-compatible with Turnkey's enclave-wrapped `decryptExportBundle`.
+
 ## Lower-level building blocks
 
+- `submitActivity(...)` — stamp + POST any activity, parse the envelope, throw on FAILED.
 - `delegateDigest(...)` — the 32-byte digest the user personal-signs (mirrors the contract).
 - `encodeExecute` / `encodeExecuteWithGasReimbursement` — KryardDelegate calldata.
 - `buildSponsoredExecute(...)` — assemble a relay submit body from already-signed pieces (pure).

@@ -9,6 +9,7 @@
  * are injected for testability.
  */
 import type { Hex } from "viem";
+import { stampAndPost } from "./http.js";
 
 export interface Stamper {
   stamp(payload: string): Promise<{ stampHeaderName: string; stampHeaderValue: string }>;
@@ -105,12 +106,7 @@ export class KryardRelayClient {
 
   private async post(path: string, body: Record<string, unknown>, label: string): Promise<RelayTx> {
     const payload = JSON.stringify(body);
-    const { stampHeaderName, stampHeaderValue } = await this.stamper.stamp(payload);
-    const res = await this.fetchFn(`${this.baseUrl}${path}`, {
-      method: "POST",
-      headers: { "content-type": "application/json", [stampHeaderName]: stampHeaderValue },
-      body: payload,
-    });
+    const res = await stampAndPost(this.fetchFn, this.stamper, `${this.baseUrl}${path}`, payload);
     if (!res.ok) {
       const text = await res.text().catch(() => "(unreadable)");
       throw new Error(`${label} failed with ${res.status}: ${text}`);
