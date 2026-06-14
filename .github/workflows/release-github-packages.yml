@@ -22,9 +22,10 @@ jobs:
           node-version: 22
           registry-url: https://npm.pkg.github.com
           scope: "@kryard"
-      # `npm ci` (not `npm install`): lockfile-exact, installs platform-matched
-      # optional deps so vitest's rollup binary is present in CI (npm#4828).
-      - run: npm ci
+      # No committed lockfile (npm#4828: a single-platform lock omits the Linux
+      # rollup/esbuild binaries). `npm install` resolves fresh so vitest's native
+      # deps are present in CI.
+      - run: npm install
       # publish runs the package's prepack (build) + prepublishOnly (typecheck+test).
       - run: npm publish -w @kryard/sdk --registry=https://npm.pkg.github.com
         env:

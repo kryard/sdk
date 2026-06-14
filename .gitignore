@@ -3,6 +3,9 @@ node_modules/
 dist/
 *.tgz
 .npmrc
+# Not committed: a single-platform lockfile omits other platforms' optional native
+# deps (rollup/esbuild) and breaks cross-platform CI installs (npm#4828).
+package-lock.json
 
 # Rust
 target/

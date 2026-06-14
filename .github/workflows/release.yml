@@ -19,10 +19,12 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-      # npm workspaces (not pnpm). Use `npm ci` for a clean, lockfile-exact install:
-      # `npm install` doesn't reliably pull platform-matched optional deps in CI
-      # (the @rollup/rollup-linux-x64-gnu / npm#4828 bug), which breaks vitest.
-      - run: npm ci
+      # npm workspaces (not pnpm). No package-lock.json is committed on purpose: a
+      # single-platform lockfile omits other platforms' optional native deps
+      # (@rollup/rollup-linux-x64-gnu / @esbuild/linux-x64, npm#4828), so a pinned
+      # install can't fetch them on the Linux runner and vitest fails to start.
+      # `npm install` resolves the tree fresh per-platform and pulls the right binaries.
+      - run: npm install
       - run: npm run typecheck
       - run: npm run build
       - run: npm run test
