@@ -2,6 +2,7 @@ export { KRYARD_DELEGATE_ABI } from "./abi.js";
 export { createApiKeyStamper, type ApiKeyStamperOptions } from "./stamper.js";
 export {
   delegateDigest,
+  domainSeparator,
   callsHash,
   encodeExecute,
   encodeExecuteWithGasReimbursement,
