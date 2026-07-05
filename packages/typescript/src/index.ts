@@ -29,6 +29,20 @@ export {
   type SponsorExecuteOptions,
   type UserSigner,
 } from "./sponsor.js";
+// --- ERC-4337 UserOperation gas sponsorship (verifying-paymaster tier) -----
+export {
+  KryardPaymasterClient,
+  SponsorshipDeniedError,
+  buildPaymasterAndData,
+  splitPaymasterAndData,
+  applyPaymasterAndData,
+  type SponsorshipReasonCode,
+  type UserOperationV07,
+  type SponsorUserOpOptions,
+  type SponsorshipResult,
+  type PaymasterAndDataParts,
+  type KryardPaymasterClientOpts,
+} from "./userOpSponsor.js";
 // --- Wallets & signing (Turnkey-compatible activity API) ------------------
 export {
   submitActivity,

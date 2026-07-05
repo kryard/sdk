@@ -123,6 +123,41 @@ const tx = await sponsorCall({
 `sponsorExecute` (above) is just `sponsorCall` with the KryardDelegate calldata built
 for you.
 
+## ERC-4337 gas sponsorship (verifying paymaster)
+
+For **account-abstraction** accounts you send a `UserOperation` through a bundler, not a
+raw transaction. `KryardPaymasterClient` is the 4337 counterpart of the 7702 relay: it does
+**not** submit anything — it vouches for gas by signing your v0.7 UserOp for Kryard's
+verifying paymaster and returns the `paymasterAndData` to splice on before the bundler sends
+it. A policy denial comes back as a typed `SponsorshipDeniedError` (with a
+`SponsorshipReasonCode`).
+
+```ts
+import { KryardPaymasterClient, applyPaymasterAndData, SponsorshipDeniedError } from "@kryard/sdk";
+
+const paymaster = new KryardPaymasterClient({
+  baseUrl: "https://api.kryard.com",
+  organizationId: process.env.KRYARD_ORG!,
+  stamper: createApiKeyStamper({
+    apiPublicKey: process.env.KRYARD_API_PUBLIC_KEY!,
+    apiPrivateKey: process.env.KRYARD_API_PRIVATE_KEY!,
+  }),
+});
+
+try {
+  // `userOp` is your packed v0.7 UserOperation (bigint gas fields; packed bytes32 limits).
+  const { paymasterAndData } = await paymaster.sponsorUserOperation(userOp, { chainId: 11155111 });
+  const sponsored = applyPaymasterAndData(userOp, paymasterAndData); // immutable — splice it on
+  // ...now sign `sponsored` and hand it to your bundler.
+} catch (e) {
+  if (e instanceof SponsorshipDeniedError) console.error("denied:", e.reasonCode); // e.g. SPONSOR_DAILY_CAP
+}
+```
+
+`buildPaymasterAndData` / `splitPaymasterAndData` are the pure v0.7 byte-layout helpers
+(paymaster ‖ verificationGas(16) ‖ postOpGas(16) ‖ abi(uint48 validUntil, uint48 validAfter) ‖
+signature(65)), byte-parity with the on-chain paymaster.
+
 ## Wallets & signing
 
 `KryardClient` wraps Kryard's Turnkey-compatible activity API. Every method stamps
@@ -226,6 +261,8 @@ it is **not** byte-compatible with Turnkey's enclave-wrapped `decryptExportBundl
 - `encodeExecute` / `encodeExecuteWithGasReimbursement` — KryardDelegate calldata.
 - `buildSponsoredExecute(...)` — assemble a relay submit body from already-signed pieces (pure).
 - `KryardRelayClient.submit` / `.get` — the raw relay route, X-Stamp authed.
+- `KryardPaymasterClient.sponsorUserOperation` — request 4337 gas sponsorship (verifying paymaster).
+- `buildPaymasterAndData` / `splitPaymasterAndData` / `applyPaymasterAndData` — pure v0.7 `paymasterAndData` byte-layout helpers.
 
 ## License
 

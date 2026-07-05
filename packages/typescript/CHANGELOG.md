@@ -35,6 +35,14 @@ delegates reject. **Must ship alongside the v2.1 delegate deployed at
 - `test/parity.test.ts` — byte-identical golden-vector parity against the deployed v2.1
   contract (captured from Foundry), proving the off-chain digest matches
   `KryardDelegate._authorize`.
+- **ERC-4337 gas sponsorship (`KryardPaymasterClient`)** — the verifying-paymaster tier,
+  distinct from the EIP-7702 relay (`sponsorExecute`/`sponsorCall`). `sponsorUserOperation`
+  X-Stamps a v0.7 `UserOperation` to `/public/v1/relay/sponsor_user_op`; on approval it
+  returns the `paymasterAndData` (+ validity window) to splice onto the op before a bundler
+  sends it, and surfaces a 403 policy denial as a typed `SponsorshipDeniedError` carrying the
+  `SponsorshipReasonCode`. Adds pure v0.7 `paymasterAndData` byte-layout helpers
+  `buildPaymasterAndData` / `splitPaymasterAndData` / `applyPaymasterAndData` (byte-parity with
+  the on-chain paymaster). Purely additive — no change to the 7702 path.
 
 ### Migration
 
