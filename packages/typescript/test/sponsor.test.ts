@@ -9,6 +9,7 @@ const ACCOUNT = "0x00000000000000000000000000000000000A11cE" as Hex;
 const DELEGATE = "0x000000000000000000000000000000000000D31E" as Hex;
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as Hex;
 const RELAYER = "0x000000000000000000000000000000000000bEEF" as Hex;
+const DEADLINE = 2_000_000_000n;
 const calls: Call[] = [{ to: "0x000000000000000000000000000000000000dEaD" as Hex, value: 0n, data: "0xd0e30db0" as Hex }];
 const AUTH: RelayAuthorization = { address: DELEGATE, chainId: 1, nonce: 0, r: "0x1" as Hex, s: "0x2" as Hex, yParity: 1 };
 
@@ -16,7 +17,7 @@ describe("buildSponsoredExecute", () => {
   it("targets the user EOA, attaches the authorization, encodes execute()", () => {
     const s: RelaySubmitInput = buildSponsoredExecute({
       account: ACCOUNT, chainId: 1, signWith: "key_1", delegateAddress: DELEGATE,
-      calls, nonce: 5n, signature: "0xabcd" as Hex, authorization: AUTH,
+      calls, nonce: 5n, deadline: DEADLINE, signature: "0xabcd" as Hex, authorization: AUTH,
     });
     expect(s.to).toBe(ACCOUNT);
     expect(s.value).toBe("0");
@@ -29,7 +30,7 @@ describe("buildSponsoredExecute", () => {
   it("encodes executeWithGasReimbursement + forwards token fields when gas is paid in ERC-20", () => {
     const s = buildSponsoredExecute({
       account: ACCOUNT, chainId: 1, signWith: "key_1", delegateAddress: DELEGATE,
-      calls, nonce: 5n, signature: "0xabcd" as Hex, authorization: AUTH,
+      calls, nonce: 5n, deadline: DEADLINE, signature: "0xabcd" as Hex, authorization: AUTH,
       gasToken: USDC, gasTokenAmount: 50_000n, relayer: RELAYER,
     });
     expect(s.gasToken).toBe(USDC);
@@ -112,7 +113,7 @@ describe("sponsorExecute", () => {
     });
 
     const tx = await sponsorExecute({
-      client, signer, chainId: 1, signWith: "key_1", delegateAddress: DELEGATE, calls, nonce: 9n, idempotencyKey: "idem-1",
+      client, signer, chainId: 1, signWith: "key_1", delegateAddress: DELEGATE, calls, nonce: 9n, deadline: DEADLINE, idempotencyKey: "idem-1",
     });
 
     expect(tx.id).toBe("rl_1");

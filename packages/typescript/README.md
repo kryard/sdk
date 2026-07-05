@@ -54,7 +54,8 @@ const account = privateKeyToAccount(process.env.USER_PK as Hex);
 const wallet = createWalletClient({ account, chain: sepolia, transport: http() });
 const signer: UserSigner = {
   address: account.address,
-  signDigest: (digest) => account.signMessage({ message: { raw: digest } }),
+  // v2.1: RAW ECDSA over the EIP-712 digest — NOT personal_sign / signMessage({ raw }).
+  signDigest: (digest) => account.sign({ hash: digest }),
   async signAuthorization({ contractAddress, chainId }) {
     const a = await wallet.signAuthorization({ account, contractAddress, chainId });
     return { address: a.address, chainId: a.chainId, nonce: a.nonce, r: a.r, s: a.s, yParity: a.yParity ?? 0 };
@@ -67,9 +68,10 @@ const tx = await sponsorExecute({
   client, signer,
   chainId: 11155111,
   signWith: process.env.KRYARD_SIGN_WITH!, // the relayer key
-  delegateAddress: KRYARD_DELEGATE,        // deployed KryardDelegate on this chain
+  delegateAddress: KRYARD_DELEGATE,        // deployed v2.1 KryardDelegate on this chain
   calls,
   nonce: BigInt(Date.now()),               // single-use delegate nonce
+  deadline: BigInt(Math.floor(Date.now() / 1000) + 3600), // Unix-seconds expiry (contract rejects now > deadline)
 });
 console.log(tx.id, tx.txHash);
 
@@ -89,7 +91,7 @@ token amount to the relayer as the batch's last step:
 
 ```ts
 await sponsorExecute({
-  client, signer, chainId, signWith, delegateAddress, calls, nonce,
+  client, signer, chainId, signWith, delegateAddress, calls, nonce, deadline,
   gasToken: USDC,
   gasTokenAmount: 50_000n,   // Kryard quotes this off-chain (gas × price × rate × margin)
   relayer: RELAYER_ADDRESS,  // the address the relayer signs with on this chain
@@ -219,7 +221,8 @@ it is **not** byte-compatible with Turnkey's enclave-wrapped `decryptExportBundl
 ## Lower-level building blocks
 
 - `submitActivity(...)` — stamp + POST any activity, parse the envelope, throw on FAILED.
-- `delegateDigest(...)` — the 32-byte digest the user personal-signs (mirrors the contract).
+- `delegateDigest(...)` — the raw 32-byte EIP-712 digest the user signs with plain ECDSA (v2.1; mirrors the contract).
+- `domainSeparator(...)` — the EIP-712 domain separator (EOA as `verifyingContract`).
 - `encodeExecute` / `encodeExecuteWithGasReimbursement` — KryardDelegate calldata.
 - `buildSponsoredExecute(...)` — assemble a relay submit body from already-signed pieces (pure).
 - `KryardRelayClient.submit` / `.get` — the raw relay route, X-Stamp authed.

@@ -20,7 +20,9 @@ export interface SponsoredExecuteParams {
   calls: Call[];
   /** Per-account delegate replay nonce (single-use). */
   nonce: bigint;
-  /** The user's personal_sign over `delegateDigest(...)`. */
+  /** Unix-seconds expiry bound into the digest + calldata (contract rejects `now > deadline`). */
+  deadline: bigint;
+  /** The user's raw-ECDSA signature over the EIP-712 `delegateDigest(...)` (NOT personal_sign). */
   signature: Hex;
   /** The user's signed EIP-7702 authorization (wire shape). */
   authorization: RelayAuthorization;
@@ -123,8 +125,16 @@ export async function sponsorCall(o: SponsorCallOptions): Promise<RelayTx> {
 export function buildSponsoredExecute(p: SponsoredExecuteParams): RelaySubmitInput {
   const useToken = p.gasToken !== undefined && p.gasTokenAmount !== undefined && p.relayer !== undefined;
   const data = useToken
-    ? encodeExecuteWithGasReimbursement(p.calls, p.nonce, p.signature, p.gasToken!, p.gasTokenAmount!, p.relayer!)
-    : encodeExecute(p.calls, p.nonce, p.signature);
+    ? encodeExecuteWithGasReimbursement(
+        p.calls,
+        p.nonce,
+        p.deadline,
+        p.signature,
+        p.gasToken!,
+        p.gasTokenAmount!,
+        p.relayer!,
+      )
+    : encodeExecute(p.calls, p.nonce, p.deadline, p.signature);
   return buildSponsoredCall({
     account: p.account,
     chainId: p.chainId,
@@ -140,7 +150,11 @@ export function buildSponsoredExecute(p: SponsoredExecuteParams): RelaySubmitInp
 
 export interface UserSigner {
   address: Hex;
-  /** personal_sign of a raw 32-byte digest — viem: account.signMessage({ message: { raw: digest } }). */
+  /**
+   * Raw ECDSA over a 32-byte EIP-712 digest — viem: `account.sign({ hash: digest })`.
+   * v2.1: this is NOT personal_sign / `signMessage({ raw })` — the contract recovers
+   * the signer from the raw digest directly (no `\x19Ethereum Signed Message` prefix).
+   */
   signDigest(digest: Hex): Promise<Hex>;
   /** Sign an EIP-7702 authorization — viem: walletClient.signAuthorization(...); return the wire shape. */
   signAuthorization(args: { contractAddress: Hex; chainId: number }): Promise<RelayAuthorization>;
@@ -154,6 +168,8 @@ export interface SponsorExecuteOptions {
   delegateAddress: Hex;
   calls: Call[];
   nonce: bigint;
+  /** Unix-seconds expiry bound into the digest + calldata (contract rejects `now > deadline`). */
+  deadline: bigint;
   gasToken?: Hex;
   gasTokenAmount?: bigint;
   relayer?: Hex;
@@ -171,6 +187,7 @@ export async function sponsorExecute(o: SponsorExecuteOptions): Promise<RelayTx>
     chainId: o.chainId,
     calls: o.calls,
     nonce: o.nonce,
+    deadline: o.deadline,
     gasToken: o.gasToken,
     gasTokenAmount: o.gasTokenAmount,
     relayer: o.relayer,
@@ -178,8 +195,16 @@ export async function sponsorExecute(o: SponsorExecuteOptions): Promise<RelayTx>
   const signature = await o.signer.signDigest(digest);
   const useToken = o.gasToken !== undefined && o.gasTokenAmount !== undefined && o.relayer !== undefined;
   const data = useToken
-    ? encodeExecuteWithGasReimbursement(o.calls, o.nonce, signature, o.gasToken!, o.gasTokenAmount!, o.relayer!)
-    : encodeExecute(o.calls, o.nonce, signature);
+    ? encodeExecuteWithGasReimbursement(
+        o.calls,
+        o.nonce,
+        o.deadline,
+        signature,
+        o.gasToken!,
+        o.gasTokenAmount!,
+        o.relayer!,
+      )
+    : encodeExecute(o.calls, o.nonce, o.deadline, signature);
   return sponsorCall({
     client: o.client,
     signer: o.signer,
