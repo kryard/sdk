@@ -1,7 +1,7 @@
 {
   "name": "@kryard/sdk",
   "version": "0.4.0",
-  "description": "Client for Kryard's Turnkey-compatible wallet infrastructure: X-Stamp'd key creation, secp256k1 signing (raw payload + EVM transaction), HPKE private-key export, and the managed EIP-7702 relay (sponsored execute with optional ERC-20 gas).",
+  "description": "Gasless, sponsored transactions via a managed EIP-7702 relay + a Turnkey-compatible EVM signer. Pay gas in any ERC-20 token. Built-in X-Stamp signer; viem peer dep.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -33,14 +33,19 @@
     "gasless",
     "sponsored-transaction",
     "account-abstraction",
-    "viem"
+    "viem",
+    "ethereum",
+    "web3",
+    "erc-20-gas",
+    "x-stamp",
+    "turnkey-alternative"
   ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Kryard/sdk.git",
     "directory": "packages/typescript"
   },
-  "homepage": "https://github.com/Kryard/sdk/tree/main/packages/typescript#readme",
+  "homepage": "https://docs.kryard.com",
   "bugs": "https://github.com/Kryard/sdk/issues",
   "engines": {
     "node": ">=18"
