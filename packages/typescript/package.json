@@ -1,7 +1,7 @@
 {
   "name": "@kryard/sdk",
-  "version": "0.4.0",
-  "description": "Gasless, sponsored transactions via a managed EIP-7702 relay + a Turnkey-compatible EVM signer. Pay gas in any ERC-20 token. Built-in X-Stamp signer; viem peer dep.",
+  "version": "0.5.0",
+  "description": "Gasless, sponsored transactions via a managed EIP-7702 relay, Turnkey-compatible EVM signer, Business Wallets, and x402 v1/v2 buyer & seller primitives.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -38,7 +38,10 @@
     "web3",
     "erc-20-gas",
     "x-stamp",
-    "turnkey-alternative"
+    "turnkey-alternative",
+    "x402",
+    "eip-3009",
+    "business-wallets"
   ],
   "repository": {
     "type": "git",

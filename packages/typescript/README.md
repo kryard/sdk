@@ -264,6 +264,54 @@ it is **not** byte-compatible with Turnkey's enclave-wrapped `decryptExportBundl
 - `KryardPaymasterClient.sponsorUserOperation` — request 4337 gas sponsorship (verifying paymaster).
 - `buildPaymasterAndData` / `splitPaymasterAndData` / `applyPaymasterAndData` — pure v0.7 `paymasterAndData` byte-layout helpers.
 
+## Business Wallets
+
+Use `KryardBusinessClient` with a dashboard session JWT to manage descendant sub-orgs, KMS payment wallets, custom ERC-20 tokens, per-token rules (including Option B `allowOpenEip3009Recipients` gated on `maxTxAmount > 0`), per-actor spend limits, and webhooks (`verifyWebhookSignature`).
+
+## x402 payments (v1 + v2, seller paywall & custodied buyer)
+
+`@kryard/sdk` ships both **seller** (`KryardX402FacilitatorClient`, `createX402Paywall`, `createX402Middleware`, `createX402HonoMiddleware`) and **buyer** (`createX402Fetch`, `createKryardCustodiedX402Signer`, `createViemX402Signer`) primitives supporting x402 **v1** (`X-PAYMENT` / `X-PAYMENT-RESPONSE`) and **v2** (`PAYMENT-REQUIRED` / `PAYMENT-SIGNATURE` / `PAYMENT-RESPONSE`, CAIP-2 `eip155:<chainId>`).
+
+```ts
+import {
+  KryardX402FacilitatorClient,
+  createX402Middleware,
+  createX402Fetch,
+  createKryardCustodiedX402Signer,
+  createApiKeyStamper,
+} from "@kryard/sdk";
+
+// Seller: verify before running handler, settle only on 2xx
+const withPaywall = createX402Middleware({
+  facilitator: new KryardX402FacilitatorClient({ baseUrl: "https://api.kryard.com", version: 2 }),
+  accepts: [
+    {
+      scheme: "exact",
+      network: "eip155:84532",
+      amount: "10000",
+      asset: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      payTo: "0xYourMerchantAddress",
+      maxTimeoutSeconds: 120,
+      extra: { name: "USDC", version: "2" },
+    },
+  ],
+});
+
+// Buyer: zero-ETH KMS wallet signing EIP-3009 via ACTIVITY_TYPE_SIGN_EIP3009_AUTHORIZATION
+const fetch402 = createX402Fetch({
+  signer: createKryardCustodiedX402Signer({
+    baseUrl: "https://api.kryard.com",
+    organizationId: process.env.KRYARD_ORG!,
+    signWith: process.env.KRYARD_WALLET_ID!,
+    stamper: createApiKeyStamper({
+      apiPublicKey: process.env.KRYARD_API_PUBLIC_KEY!,
+      apiPrivateKey: process.env.KRYARD_API_PRIVATE_KEY!,
+    }),
+  }),
+  maxAmountPerCall: "1000000",
+});
+```
+
 ## License
 
 MIT.

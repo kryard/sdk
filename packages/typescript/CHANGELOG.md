@@ -2,6 +2,20 @@
 
 All notable changes to `@kryard/sdk` are documented here.
 
+## 0.5.0 — Back-to-back x402 (v1 + v2) & Business Wallets
+
+### Added
+
+- **Back-to-back x402 v1 & v2 primitives (`src/x402.ts`):**
+  - Buyer helpers: `createKryardCustodiedX402Signer` (calls `POST /public/v1/submit/sign_eip3009_authorization` using X-Stamp auth), `createViemX402Signer` (local EOA via viem `signTypedData`), and `createX402Fetch` (handles HTTP `402` challenge negotiation, per-call/network/asset/payTo client guards, retries once, and invokes `onPaymentSettled`).
+  - Seller helpers: `KryardX402FacilitatorClient` (`/x402/v1/*` and `/x402/v2/*`), `createX402Paywall`, `createX402Middleware` (Web Standard — verifies before running handler and settles only on 2xx), and `createX402HonoMiddleware`.
+  - Protocol helpers: `encodeX402Header`, `decodeX402Header`, `parseX402ChainId`, `EIP3009_TYPED_DATA_TYPES`, and typed error classes (`X402Error`, `X402PaymentRefusedError`, `X402SigningError`).
+- **Business Wallet control-plane client (`src/businessClient.ts`):**
+  - `KryardBusinessClient` for subtree orgs, KMS payment wallet provisioning, custom tokens, multi-chain balances & payments, gasless sends, invitations/role/scope management, actor/token spend limits, per-token rules (including `allowOpenEip3009Recipients` Option B open-merchant toggle requiring `maxTxAmount > 0`), and webhooks.
+  - `verifyWebhookSignature` helper for constant-time HMAC-SHA256 verification of `X-Kryard-Signature`.
+- **Public project client (`src/projectClient.ts`):**
+  - `KryardProjectClient` (`x-kryard-project` header for `/client/v1/config`).
+
 ## 0.4.0 — v2.1 delegate-digest resync (BREAKING)
 
 Resyncs the off-chain delegate digest with the deployed **v2.1 `KryardDelegate`**.
