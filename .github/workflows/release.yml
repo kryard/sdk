@@ -1,24 +1,26 @@
 name: Release
 
-# Publish @kryard/sdk (packages/typescript) to npm on a version tag (e.g. v0.2.0).
-# The tag must match the package's version. Requires repo secret NPM_TOKEN (an npm
-# automation token with publish rights to the @kryard scope).
+# Publish @kryard/sdk (packages/typescript) to npm via OIDC Trusted Publishing
+# on a version tag (e.g. v0.5.0) or manual workflow_dispatch from main.
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
+          node-version: 24
+      # npm Trusted Publishing (OIDC) requires npm >= 11.5.1.
+      - run: npm install -g npm@latest && npm --version
       # npm workspaces (not pnpm). No package-lock.json is committed on purpose: a
       # single-platform lockfile omits other platforms' optional native deps
       # (@rollup/rollup-linux-x64-gnu / @esbuild/linux-x64, npm#4828), so a pinned
@@ -28,7 +30,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm run test
-      # Publish only the TypeScript workspace package.
-      - run: npm publish -w @kryard/sdk --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # Ensure no blank _authToken shadows OIDC token exchange, then publish with OIDC.
+      - run: |
+          npm config delete //registry.npmjs.org/:_authToken || true
+          npm publish -w @kryard/sdk --access public
